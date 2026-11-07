@@ -1,0 +1,7 @@
+# Object and temporary files
+*.o
+*.obj
+*.tmp
+
+# Visual Studio Code workspace storage
+.vscode/.browse.VC.db*
