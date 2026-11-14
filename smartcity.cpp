@@ -3,9 +3,9 @@
 //               Computer Graphics Project | C/C++ & WinBGIm (graphics.h)
 // ============================================================================
 // Features:
-// 1. High-Tech Smart Highway Gantry & Autonomous V2X Sensor Grid (replaces old traffic signals)
-// 2. Multi-Lane Autonomous Highway with Zero-Overlap Hard Spacing Physics
-// 3. Smart Photoluminescent LED-Embedded Crosswalk (Active Neon Pavement Strips)
+// 1. Multi-Lane Autonomous Highway with Zero-Overlap Hard Spacing Physics (Continuous Flow)
+// 2. Smart Solar Bus Transit Station & Passenger Shelter with Real-Time Dynamic Departure Display
+// 3. Sidewalk Pedestrian Kinematics (Natural X-Axis Walk, Harmonic Swing & Rain Umbrellas)
 // 4. Autonomous Aerial Delivery Quadcopter Drone with 4 Spinning Rotors & Parcel
 // 5. Scrolling Digital LED Message Billboard / Video Wall on Tech Tower
 // 6. Central Park Plaza with Animated Water Fountain (Parabolic Gravity Physics)
@@ -16,7 +16,7 @@
 // 11. Commercial Jet Aircraft with Navigation Strobes & Vapor Contrails
 // 12. Smart EV Fast-Charging Bay with Pulsing Battery Telemetry ([P])
 // 13. Dynamic Day/Night Cycle ([N]) & Rain Weather Simulation with Road Ripples ([R])
-// 14. Emergency Preemption System with 5G V2X Priority Wave Broadcast ([E] / [F])
+// 14. Emergency Preemption System with 5G V2X Strobe Vehicles ([E] / [F])
 // 15. Audio Feedback Sound Effects Toggle ([S]) & Diagnostics Overlay Modal ([H])
 // ============================================================================
 
@@ -51,10 +51,7 @@ const int ROAD_TOP      = 525;
 const int ROAD_BOT      = 675;
 const int BOTTOM_HUD_Y  = 676;
 
-const int STOP_LINE_X   = 345;
-const int GANTRY_X      = 405;
-const int CROSSWALK_X1  = 358;
-const int CROSSWALK_X2  = 425;
+const int TRANSIT_SHELTER_X = 405;
 
 const int LANE_Y[3]       = { 552, 600, 650 };
 const float LANE_SCALE[3] = { 0.82f, 0.96f, 1.10f };
@@ -85,20 +82,9 @@ int solarOutputKW        = 640;
 int windOutputKW         = 780;
 
 // ============================================================================
-// AUTONOMOUS TRAFFIC MANAGEMENT STATE (SMART GANTRY & V2X)
+// AUTONOMOUS TRAFFIC & SMART TRANSIT MANAGEMENT
+// Continuous zero-overlap vehicle flow with roadside passenger transit shelter
 // ============================================================================
-enum GantryState {
-    GANTRY_FLOW,       // All lanes flowing freely (Green Arrow / Speed limit 60)
-    GANTRY_WARNING,    // Approaching pedestrian crossing or slow-down (Yellow !)
-    GANTRY_PEDESTRIAN  // Crosswalk active: Stop line active, ground LEDs neon cyan/red
-};
-
-GantryState gantryState = GANTRY_FLOW;
-int gantryTimer = 0;
-
-const int DURATION_FLOW      = 220; // ~5.5 seconds flowing
-const int DURATION_WARNING   = 45;  // ~1.1 seconds caution
-const int DURATION_CROSSING  = 160; // ~4.0 seconds pedestrian crossing
 
 // ============================================================================
 // DATA STRUCTURES
@@ -132,9 +118,7 @@ struct Pedestrian {
     int   skinColor;
     int   umbrellaColor;
     float walkPhase;
-    bool  crossing;
-    bool  waiting;
-    int   direction; // 1: down, -1: up
+    int   direction; // 1: walking right (+X), -1: walking left (-X)
 };
 
 struct Cloud {
@@ -329,24 +313,50 @@ void initVehicles() {
 
 void initPedestrians() {
     pedestrians.clear();
-    int count = 5;
-    int shirts[5] = { COLOR(30, 136, 229), COLOR(229, 57, 53), COLOR(67, 160, 71), COLOR(251, 140, 0), COLOR(142, 36, 170) };
-    int pants[5]  = { COLOR(38, 50, 56), COLOR(55, 71, 79), COLOR(33, 33, 33), COLOR(69, 90, 100), COLOR(40, 53, 64) };
-    int umbrellas[5] = { COLOR(230, 50, 50), COLOR(30, 140, 230), COLOR(250, 190, 20), COLOR(160, 40, 200), COLOR(40, 180, 100) };
+    int count = 6;
+    float startX[6] = { 60.0f, 260.0f, 480.0f, 700.0f, 920.0f, 1140.0f };
+    int dirs[6]     = { 1, -1, 1, -1, 1, -1 };
+    float speeds[6] = { 0.95f, 1.10f, 1.05f, 0.90f, 1.15f, 1.00f };
+
+    int shirts[6] = {
+        COLOR(30, 136, 229),
+        COLOR(229, 57, 53),
+        COLOR(67, 160, 71),
+        COLOR(251, 140, 0),
+        COLOR(142, 36, 170),
+        COLOR(0, 150, 136)
+    };
+    int pants[6] = {
+        COLOR(38, 50, 56),
+        COLOR(55, 71, 79),
+        COLOR(33, 33, 33),
+        COLOR(69, 90, 100),
+        COLOR(40, 53, 64),
+        COLOR(45, 45, 45)
+    };
+    int umbrellas[6] = {
+        COLOR(230, 50, 50),
+        COLOR(30, 140, 230),
+        COLOR(250, 190, 20),
+        COLOR(160, 40, 200),
+        COLOR(40, 180, 100),
+        COLOR(255, 110, 64)
+    };
 
     for (int i = 0; i < count; i++) {
         Pedestrian p;
-        p.x = CROSSWALK_X1 + 10 + i * 14;
-        p.y = SIDEWALK_TOP + 12 + (i % 2) * 16;
-        p.speed = 1.1f + (i * 0.12f);
-        p.shirtColor = shirts[i % 5];
-        p.pantColor = pants[i % 5];
+        p.x = startX[i];
+        p.direction = dirs[i];
+        // Two dedicated sidewalk walking lines so opposite directions never collide:
+        // Walking right (+X): y = SIDEWALK_TOP + 28 (508)
+        // Walking left  (-X): y = SIDEWALK_TOP + 17 (497)
+        p.y = (p.direction == 1) ? (SIDEWALK_TOP + 28) : (SIDEWALK_TOP + 17);
+        p.speed = speeds[i];
+        p.shirtColor = shirts[i];
+        p.pantColor = pants[i];
         p.skinColor = COLOR(245, 195, 150);
-        p.umbrellaColor = umbrellas[i % 5];
-        p.walkPhase = (float)(i * 1.2);
-        p.crossing = false;
-        p.waiting = true;
-        p.direction = 1;
+        p.umbrellaColor = umbrellas[i];
+        p.walkPhase = (float)(i * 1.5f);
         pedestrians.push_back(p);
     }
 }
@@ -1080,108 +1090,97 @@ void drawSmartPoles() {
 }
 
 // ============================================================================
-// UNIQUE SMART CITY FEATURE 4: SMART HIGHWAY GANTRY (ITS) & V2X SENSOR GRID
-// Replaces traditional clunky traffic lights with an intelligent autonomous overpass
+// UNIQUE SMART CITY FEATURE: SMART SOLAR BUS TRANSIT STATION & PASSENGER SHELTER
+// Roadside high-tech passenger hub with solar glass roof, dynamic departure
+// display (PIS), interactive touch totem, and ambient illumination.
 // ============================================================================
-void updateAutonomousGantryLogic() {
-    bool emergencyApproaching = false;
-    if (ambulanceActive && ambulance.x > 0 && ambulance.x < GANTRY_X + 120)
-        emergencyApproaching = true;
-    if (fireTruckActive && fireTruck.x > 0 && fireTruck.x < GANTRY_X + 120)
-        emergencyApproaching = true;
+void drawSmartTransitShelter() {
+    int sx = TRANSIT_SHELTER_X; // 405
+    int roofX1 = sx - 42;       // 363
+    int roofX2 = sx + 42;       // 447
+    int roofY1 = 466;
+    int roofY2 = 472;
 
-    if (emergencyApproaching) {
-        gantryState = GANTRY_FLOW;
-        gantryTimer = 0;
-        return;
-    }
+    // Structural Pillars anchored to sidewalk
+    int postCol = nightMode ? COLOR(45, 52, 62) : COLOR(100, 110, 120);
+    filledRect(sx - 34, roofY2, sx - 30, SIDEWALK_BOT - 5, postCol, BLACK);
+    filledRect(sx + 30, roofY2, sx + 34, SIDEWALK_BOT - 5, postCol, BLACK);
 
-    gantryTimer++;
-    if (gantryState == GANTRY_FLOW && gantryTimer >= DURATION_FLOW) {
-        gantryState = GANTRY_WARNING;
-        gantryTimer = 0;
-    } else if (gantryState == GANTRY_WARNING && gantryTimer >= DURATION_WARNING) {
-        gantryState = GANTRY_PEDESTRIAN;
-        gantryTimer = 0;
-    } else if (gantryState == GANTRY_PEDESTRIAN && gantryTimer >= DURATION_CROSSING) {
-        gantryState = GANTRY_FLOW;
-        gantryTimer = 0;
-    }
-}
+    // Tempered Glass Back Wind-Screen (semi-transparent tint)
+    int glassCol = nightMode ? COLOR(25, 35, 48) : COLOR(185, 215, 235);
+    filledRect(sx - 30, roofY2 + 2, sx + 30, SIDEWALK_TOP + 22, glassCol, COLOR(60, 75, 90));
+    // Frosted horizontal design stripes on glass
+    setcolor(nightMode ? COLOR(50, 70, 95) : COLOR(215, 235, 245));
+    line(sx - 28, roofY2 + 10, sx + 28, roofY2 + 10);
+    line(sx - 28, roofY2 + 16, sx + 28, roofY2 + 16);
 
-void drawSmartHighwayGantry() {
-    int gx = GANTRY_X;
-    int gantryTopY = ROAD_TOP - 160;
-
-    // Structural Cantilever Mast & High-Tech Truss
-    int trussCol = COLOR(42, 48, 58);
-    filledRect(gx - 4, gantryTopY, gx + 8, ROAD_TOP, trussCol, BLACK);
-    // Cantilever overpass arm spanning across the highway
-    filledRect(gx - 55, gantryTopY + 15, gx + 8, gantryTopY + 28, trussCol, BLACK);
-
-    // AI 5G V2X Telemetry Antennas on Gantry Top
-    line(gx - 40, gantryTopY + 15, gx - 40, gantryTopY - 10);
-    line(gx - 10, gantryTopY + 15, gx - 10, gantryTopY - 12);
-    filledCircle(gx - 40, gantryTopY - 10, 3, COLOR(0, 229, 255));
-    filledCircle(gx - 10, gantryTopY - 12, 3, COLOR(0, 229, 255));
-
-    // Animated Wireless 5G Waves Radiating from Gantry to Autonomous Cars
-    int waveR = (frameCount * 2) % 36;
+    // Cantilever Aerodynamic Solar Glass Canopy Roof
+    filledRect(roofX1, roofY1, roofX2, roofY2, COLOR(30, 36, 45), BLACK);
+    // Solar PV Layer on Roof
+    filledRect(roofX1 + 2, roofY1 + 1, roofX2 - 2, roofY1 + 3, COLOR(20, 70, 130));
+    // Glowing Neon Cyan Roof Edge Strip
     setcolor(COLOR(0, 229, 255));
-    arc(gx - 25, gantryTopY - 10, 200, 340, waveR + 8);
+    line(roofX1, roofY1, roofX2, roofY1);
 
-    // Large Digital Overhead Message Display Matrix
-    int matX1 = gx - 55;
-    int matY1 = gantryTopY + 28;
-    int matX2 = gx + 4;
-    int matY2 = matY1 + 75;
-    filledRect(matX1, matY1, matX2, matY2, COLOR(15, 20, 28), COLOR(0, 229, 255));
-
-    // Dynamic Lane Guidance Signals & Status Matrix per lane
-    if (gantryState == GANTRY_FLOW) {
-        // Lane 0: 60 km/h | Green Flow Arrow
-        drawText(matX1 + 6, matY1 + 6, "L0: [60] v", COLOR(0, 255, 150), 1);
-        // Lane 1: 50 km/h | Green Flow Arrow
-        drawText(matX1 + 6, matY1 + 24, "L1: [50] v", COLOR(0, 255, 150), 1);
-        // Lane 2: Bus/Eco Priority
-        drawText(matX1 + 6, matY1 + 42, "L2: [BUS] v", COLOR(0, 229, 255), 1);
-        // Grid Status
-        drawText(matX1 + 6, matY1 + 60, "V2X: OPTIMAL", COLOR(0, 255, 150), 1);
-    } else if (gantryState == GANTRY_WARNING) {
-        drawText(matX1 + 6, matY1 + 6, "L0: [!] SLOW", YELLOW, 1);
-        drawText(matX1 + 6, matY1 + 24, "L1: [!] SLOW", YELLOW, 1);
-        drawText(matX1 + 6, matY1 + 42, "L2: [!] YIELD", YELLOW, 1);
-        drawText(matX1 + 6, matY1 + 60, "V2X: CAUTION", YELLOW, 1);
-    } else { // GANTRY_PEDESTRIAN (Crosswalk Active)
-        drawText(matX1 + 6, matY1 + 6, "L0: [X] HOLD", RED, 1);
-        drawText(matX1 + 6, matY1 + 24, "L1: [X] HOLD", RED, 1);
-        drawText(matX1 + 6, matY1 + 42, "L2: [X] HOLD", RED, 1);
-        drawText(matX1 + 6, matY1 + 60, "PEDESTRIANS", COLOR(255, 80, 80), 1);
+    // Overhead Digital Transit Schedule Screen (PIS)
+    int dispX1 = sx - 26;
+    int dispX2 = sx + 26;
+    int dispY1 = roofY2 + 2;
+    int dispY2 = roofY2 + 15;
+    filledRect(dispX1, dispY1, dispX2, dispY2, COLOR(12, 16, 24), COLOR(0, 229, 255));
+    
+    // Live Dynamic Departure Board Ticker
+    int cycle = (frameCount / 70) % 3;
+    if (cycle == 0) {
+        drawText(dispX1 + 3, dispY1 + 3, "101 BUS: 2m", COLOR(255, 190, 0), 1);
+    } else if (cycle == 1) {
+        drawText(dispX1 + 3, dispY1 + 3, "502 EXP: 5m", COLOR(0, 255, 180), 1);
+    } else {
+        drawText(dispX1 + 3, dispY1 + 3, "V2X OPTIMAL", COLOR(0, 229, 255), 1);
     }
 
-    // Optical LiDAR Crosswalk Scanner Beam
-    if (gantryState == GANTRY_PEDESTRIAN) {
-        // Soft animated scanning laser fan down to the crosswalk
-        int scanX = CROSSWALK_X1 + ((frameCount * 3) % (CROSSWALK_X2 - CROSSWALK_X1));
-        setcolor(COLOR(0, 229, 255));
-        line(gx - 25, matY2, scanX, ROAD_TOP + 5);
-        line(gx - 25, matY2, scanX + 4, ROAD_TOP + 5);
-    }
+    // Hardwood Passenger Waiting Bench inside Shelter
+    filledRect(sx - 24, SIDEWALK_TOP + 22, sx + 24, SIDEWALK_TOP + 26, COLOR(160, 95, 45), BLACK);
+    setcolor(BLACK);
+    line(sx - 20, SIDEWALK_TOP + 26, sx - 20, SIDEWALK_TOP + 36);
+    line(sx + 20, SIDEWALK_TOP + 26, sx + 20, SIDEWALK_TOP + 36);
 
-    // V2I 5G Priority Broadcast Wave when Emergency Vehicle is active
-    bool emergencyApproaching = (ambulanceActive || fireTruckActive);
-    if (emergencyApproaching) {
-        drawText(matX1 - 18, gantryTopY - 24, "5G EMERGENCY WAVE", COLOR(0, 229, 255), 1);
-        int emX = ambulanceActive ? (int)ambulance.x + 35 : (int)fireTruck.x + 45;
-        if (emX > 20 && emX < gx + 50) {
-            setcolor(COLOR(0, 229, 255));
-            line(emX, ROAD_TOP + 40, gx - 25, gantryTopY + 20);
-        }
+    // Interactive 5G Information Totem / Digital Route Kiosk
+    int totemX1 = sx + 35;
+    int totemX2 = sx + 43;
+    int totemY1 = roofY2 + 8;
+    int totemY2 = SIDEWALK_BOT - 6;
+    filledRect(totemX1, totemY1, totemX2, totemY2, COLOR(35, 40, 50), BLACK);
+    // Glowing Touchscreen
+    filledRect(totemX1 + 1, totemY1 + 4, totemX2 - 1, totemY1 + 14, COLOR(0, 229, 255));
+    // Blinking Micro-antenna LED
+    bool totemBlink = ((frameCount / 15) % 2 == 0);
+    line(totemX1 + 4, totemY1, totemX1 + 4, totemY1 - 6);
+    filledCircle(totemX1 + 4, totemY1 - 6, 2, totemBlink ? COLOR(0, 255, 128) : COLOR(0, 180, 255));
+
+    // Night Mode Lighting: Warm illumination under the shelter canopy
+    if (nightMode) {
+        // Interior LED Ceiling Strip
+        filledRect(sx - 28, roofY2, sx + 28, roofY2 + 2, COLOR(255, 245, 180));
+
+        // Soft ambient downward light cone on sidewalk
+        int lightPts[8] = {
+            sx - 28, roofY2 + 2,
+            sx + 28, roofY2 + 2,
+            sx + 36, SIDEWALK_BOT - 4,
+            sx - 36, SIDEWALK_BOT - 4
+        };
+        setfillstyle(SOLID_FILL, COLOR(52, 58, 62));
+        setcolor(COLOR(52, 58, 62));
+        fillpoly(4, lightPts);
+
+        // Redraw bench so it stays visible over the light cone
+        filledRect(sx - 24, SIDEWALK_TOP + 22, sx + 24, SIDEWALK_TOP + 26, COLOR(160, 95, 45), BLACK);
     }
 }
 
 // ============================================================================
-// UNIQUE SMART CITY FEATURE 5: SMART PHOTOLUMINESCENT LED CROSSWALK
+// CONTINUOUS MULTI-LANE HIGHWAY ROADWAY
 // ============================================================================
 void drawSmartRoadway() {
     // Sidewalk Granite Paving
@@ -1210,36 +1209,6 @@ void drawSmartRoadway() {
     // Lower Solid White Edge Line
     setcolor(WHITE);
     line(0, ROAD_BOT - 3, W, ROAD_BOT - 3);
-
-    // Smart Stop Line
-    bool isPedCrossing = (gantryState == GANTRY_PEDESTRIAN);
-    int stopLineCol = isPedCrossing ? RED : WHITE;
-    filledRect(STOP_LINE_X - 4, ROAD_TOP + 3, STOP_LINE_X, ROAD_BOT - 3, stopLineCol);
-    if (isPedCrossing) {
-        // Glowing Neon Red Ground Light Barrier
-        setcolor(COLOR(255, 80, 80));
-        line(STOP_LINE_X - 6, ROAD_TOP + 3, STOP_LINE_X - 6, ROAD_BOT - 3);
-        line(STOP_LINE_X + 2, ROAD_TOP + 3, STOP_LINE_X + 2, ROAD_BOT - 3);
-    }
-
-    // Smart Photoluminescent Ground-Embedded LED Crosswalk Stripes
-    int stripeCol;
-    if (isPedCrossing) {
-        stripeCol = COLOR(0, 229, 255); // Neon Cyan illumination when pedestrians cross!
-    } else if (gantryState == GANTRY_WARNING) {
-        stripeCol = COLOR(255, 215, 0); // Warning Amber
-    } else {
-        stripeCol = WHITE;              // Standard Ambient
-    }
-
-    for (int sx = CROSSWALK_X1; sx <= CROSSWALK_X2; sx += 18) {
-        filledRect(sx, ROAD_TOP + 6, sx + 11, ROAD_BOT - 6, stripeCol);
-        if (isPedCrossing) {
-            // Neon perimeter edge glow
-            setcolor(COLOR(100, 255, 255));
-            rectangle(sx - 1, ROAD_TOP + 5, sx + 12, ROAD_BOT - 5);
-        }
-    }
 }
 
 // ============================================================================
@@ -1465,8 +1434,6 @@ void drawFireTruckVehicle(int x, int y, bool strobe) {
 // ZERO-OVERLAP VEHICLE PHYSICS & QUEUING SYSTEM
 // ============================================================================
 void updateVehicles() {
-    bool crosswalkActive = (gantryState == GANTRY_PEDESTRIAN);
-
     for (int lane = 0; lane < 3; lane++) {
         vector<int> list;
         for (size_t i = 0; i < vehicles.size(); i++) {
@@ -1485,20 +1452,7 @@ void updateVehicles() {
             float targetSpeed = v.maxSpeed;
             v.isBraking = false;
 
-            // 1. Crosswalk & Stop Line Deceleration
-            if (crosswalkActive) {
-                if (v.x < STOP_LINE_X - 10 && v.x > STOP_LINE_X - 250) {
-                    float dist = (STOP_LINE_X - 10) - v.x;
-                    targetSpeed = (dist / 250.0f) * v.maxSpeed;
-                    if (targetSpeed < 0.2f) targetSpeed = 0.0f;
-                    v.isBraking = true;
-                } else if (v.x >= STOP_LINE_X - 10 && v.x < STOP_LINE_X + 20) {
-                    targetSpeed = 0.0f;
-                    v.isBraking = true;
-                }
-            }
-
-            // 2. Safe Following Distance towards car ahead
+            // Safe Following Distance towards car ahead
             if (k > 0) {
                 Vehicle& ahead = vehicles[list[k - 1]];
                 float minSafeGap = (v.length / 2.0f) + (ahead.length / 2.0f) + 35.0f;
@@ -1533,14 +1487,7 @@ void updateVehicles() {
                 }
             }
 
-            // Hard clamp at stop line during active pedestrian crossing
-            if (crosswalkActive && v.x > STOP_LINE_X - 10 && v.x < STOP_LINE_X + 20) {
-                v.x = STOP_LINE_X - 10;
-                v.speed = 0.0f;
-                v.isBraking = true;
-            }
-
-            // 3. Safe Wraparound: Always respawn safely behind rearmost car
+            // Safe Wraparound: Always respawn safely behind rearmost car
             if (v.x > W + 140) {
                 float rearmostX = 0.0f;
                 for (size_t j = 0; j < list.size(); j++) {
@@ -1600,14 +1547,18 @@ void drawAllVehicles() {
 }
 
 // ============================================================================
-// PEDESTRIAN CROSSING KINEMATICS & UMBRELLA SYSTEM
+// SIDEWALK PEDESTRIAN KINEMATICS & UMBRELLA SYSTEM (X-AXIS FLOW)
+// Citizens walking along the sidewalk with harmonic leg/arm swing and umbrellas.
 // ============================================================================
-void drawPedestrianModel(int x, int y, int shirtCol, int pantCol, int skinCol, int umbrellaCol, float walkPhase, bool isWalking) {
+void drawPedestrianModel(int x, int y, int shirtCol, int pantCol, int skinCol, int umbrellaCol, float walkPhase, bool isWalking, int direction) {
+    // Head & Hair
     filledCircle(x, y - 18, 6, skinCol);
-    filledCircle(x, y - 22, 5, COLOR(45, 30, 20));
+    filledCircle(x - direction * 1, y - 22, 5, COLOR(45, 30, 20));
 
+    // Torso (Shirt)
     filledRect(x - 4, y - 12, x + 4, y + 2, shirtCol, BLACK);
 
+    // Leg & Arm Kinematics (Harmonic Oscillation)
     float swingAngle = isWalking ? (float)(0.45 * sin(walkPhase)) : 0.0f;
 
     int hipY = y + 2;
@@ -1632,40 +1583,43 @@ void drawPedestrianModel(int x, int y, int shirtCol, int pantCol, int skinCol, i
     line(x - 4, shY, arm1X, arm1Y);
     line(x + 4, shY, arm2X, arm2Y);
 
+    // Rain Umbrella (Sleek Dome)
     if (rainMode) {
+        int stemX = x + direction * 3;
         setcolor(COLOR(180, 185, 190));
-        line(x + 3, y - 10, x + 8, y - 26);
-        filledCircle(x + 8, y - 28, 14, umbrellaCol, COLOR(30, 30, 30));
-        filledRect(x - 8, y - 28, x + 24, y - 20, rainMode ? (nightMode ? COLOR(16, 20, 32) : COLOR(88, 106, 122)) : WHITE);
+        line(x, y - 8, stemX, y - 24);
+        setcolor(COLOR(30, 30, 30));
+        setfillstyle(SOLID_FILL, umbrellaCol);
+        pieslice(stemX, y - 24, 0, 180, 13);
     }
 }
 
 void updatePedestrians() {
-    bool canCross = (gantryState == GANTRY_PEDESTRIAN);
-
     for (size_t i = 0; i < pedestrians.size(); i++) {
         Pedestrian& p = pedestrians[i];
-        bool isMoving = false;
 
-        if (canCross) {
-            p.waiting = false;
-            p.y += p.speed * p.direction;
-            p.walkPhase += 0.18f;
-            isMoving = true;
-
-            if (p.direction == 1 && p.y > ROAD_BOT + 12) {
-                p.direction = -1;
-                p.y = ROAD_BOT + 12;
-            } else if (p.direction == -1 && p.y < SIDEWALK_TOP + 12) {
-                p.direction = 1;
-                p.y = SIDEWALK_TOP + 12;
+        // Safe spacing against pedestrians walking in the same lane
+        for (size_t j = 0; j < pedestrians.size(); j++) {
+            if (i != j && pedestrians[j].direction == p.direction) {
+                if (p.direction == 1 && pedestrians[j].x > p.x && (pedestrians[j].x - p.x) < 45.0f) {
+                    p.speed = min(p.speed, pedestrians[j].speed);
+                } else if (p.direction == -1 && pedestrians[j].x < p.x && (p.x - pedestrians[j].x) < 45.0f) {
+                    p.speed = min(p.speed, pedestrians[j].speed);
+                }
             }
-        } else {
-            p.waiting = true;
-            isMoving = false;
         }
 
-        drawPedestrianModel((int)p.x, (int)p.y, p.shirtColor, p.pantColor, p.skinColor, p.umbrellaColor, p.walkPhase, isMoving);
+        p.x += p.speed * p.direction;
+        p.walkPhase += 0.16f * p.speed;
+
+        // Continuous wraparound at screen borders
+        if (p.direction == 1 && p.x > W + 35) {
+            p.x = -30.0f;
+        } else if (p.direction == -1 && p.x < -35) {
+            p.x = W + 30.0f;
+        }
+
+        drawPedestrianModel((int)p.x, (int)p.y, p.shirtColor, p.pantColor, p.skinColor, p.umbrellaColor, p.walkPhase, true, p.direction);
     }
 }
 
@@ -1754,14 +1708,13 @@ void drawHUD() {
     setcolor(COLOR(0, 229, 255));
     line(0, BOTTOM_HUD_Y, W, BOTTOM_HUD_Y);
 
-    const char* gantryName = (gantryState == GANTRY_FLOW) ? "AUTONOMOUS FLOW" : (gantryState == GANTRY_WARNING ? "CAUTION" : "CROSSWALK ACTIVE");
     const char* trafDensityName = (trafficDensity == 1) ? "LOW" : (trafficDensity == 2 ? "OPTIMAL" : "RUSH HOUR");
 
     char statusLeft[120];
-    sprintf(statusLeft, "TRAFFIC: %s | ITS GANTRY: [%s] | AQI: 24 (EXCELLENT)", trafDensityName, gantryName);
-    drawText(15, BOTTOM_HUD_Y + 7, statusLeft, (gantryState == GANTRY_PEDESTRIAN) ? COLOR(255, 100, 100) : COLOR(0, 255, 150), 1);
+    sprintf(statusLeft, "TRAFFIC: %s (CONTINUOUS FLOW) | SMART TRANSIT: ACTIVE | AQI: 24 (EXCELLENT)", trafDensityName);
+    drawText(15, BOTTOM_HUD_Y + 7, statusLeft, COLOR(0, 255, 150), 1);
 
-    const char* keyGuide = "[N] Day/Night | [R] Rain | [T] Train Boost | [E] Ambulance | [F] Fire | [SPACE] Gantry Mode | [1/2/3] Traffic | [P] EV Bay | [S] Sound | [H] Help";
+    const char* keyGuide = "[N] Day/Night | [R] Rain | [T] Train Boost | [E] Ambulance | [F] Fire | [SPACE] City Chime | [1/2/3] Traffic | [P] EV Bay | [S] Sound | [H] Help";
     drawText(15, BOTTOM_HUD_Y + 24, keyGuide, COLOR(200, 210, 225), 1);
 }
 
@@ -1782,9 +1735,9 @@ void drawDiagnosticsOverlay() {
     int curY = modalY1 + 46;
     drawText(modalX1 + 20, curY, "=== UNIQUE SMART CITY ARCHITECTURE ===", WHITE, 1);
     curY += 20;
-    drawText(modalX1 + 25, curY, "1. Smart Highway Gantry: Replaces clunky signals with dynamic overhead lane displays & V2X radar.", COLOR(200, 215, 230), 1);
+    drawText(modalX1 + 25, curY, "1. Autonomous Highway: Continuous multi-lane zero-overlap vehicle physics & safe following.", COLOR(200, 215, 230), 1);
     curY += 17;
-    drawText(modalX1 + 25, curY, "2. Photoluminescent LED Crosswalk: Ground-embedded neon lighting strips for pedestrian safety.", COLOR(200, 215, 230), 1);
+    drawText(modalX1 + 25, curY, "2. Smart Transit Shelter: Roadside solar glass passenger station with real-time digital schedule.", COLOR(200, 215, 230), 1);
     curY += 17;
     drawText(modalX1 + 25, curY, "3. Zero-Overlap Vehicle Queuing: Hard distance clamping and safe circular wraparound logic.", COLOR(200, 215, 230), 1);
     curY += 17;
@@ -1811,7 +1764,7 @@ void drawDiagnosticsOverlay() {
     curY += 16;
     drawText(modalX1 + 25, curY, "[F] Fire Rescue Emergency Dispatch (ladder engine & priority green wave)", WHITE, 1);
     curY += 16;
-    drawText(modalX1 + 25, curY, "[SPACE] Manual Autonomous Gantry Override (toggle Flow vs Pedestrian Mode)", WHITE, 1);
+    drawText(modalX1 + 25, curY, "[SPACE] City Audio Chime / Acoustic Signal Feedback", WHITE, 1);
     curY += 16;
     drawText(modalX1 + 25, curY, "[1 / 2 / 3] Traffic Density Level (Low: 3 vehicles, Med: 6, Rush: 9)", WHITE, 1);
     curY += 16;
@@ -1831,7 +1784,6 @@ void renderFrame() {
 
     // Physics & Logic Updates
     updateClock();
-    updateAutonomousGantryLogic();
     updateVehicles();
 
     // Render Layers
@@ -1854,17 +1806,15 @@ void renderFrame() {
     drawParkBench();
     drawSmartWasteBin();
     drawParkFountain();
+    drawSmartTransitShelter();
     drawCommuterScooter();
     drawEVChargingBay();
 
-    // Smart Highway & Photoluminescent Crosswalk
+    // Smart Highway Roadway & Street Poles
     drawSmartRoadway();
     drawSmartPoles();
 
-    // Smart Highway Gantry (ITS)
-    drawSmartHighwayGantry();
-
-    // Pedestrian Crossing
+    // Sidewalk Pedestrians (Continuous X-Axis Kinematics)
     updatePedestrians();
 
     // Multi-Lane Autonomous Highway Vehicles
@@ -1951,12 +1901,7 @@ int main() {
                     break;
 
                 case ' ':
-                    if (gantryState == GANTRY_FLOW)
-                        gantryState = GANTRY_PEDESTRIAN;
-                    else
-                        gantryState = GANTRY_FLOW;
-                    gantryTimer = 0;
-                    playAudioFeedback(650, 25);
+                    playAudioFeedback(650, 30);
                     break;
 
                 case '1':

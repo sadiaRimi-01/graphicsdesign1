@@ -35,16 +35,20 @@ Taking inspiration from modern eco-metropolises and sustainable smart cities, th
 - **Safe Circular Queue Wraparound**:
   - When a car reaches the right edge ($X > 1420$), it searches for the rearmost car in that lane and respawns safely behind it with at least $150\text{px}$ of buffer space.
 
-### 2. ⚡ High-Tech Smart Highway Gantry (Replaces Traditional Traffic Light)
-- Traditional clunky traffic poles are replaced by an **Overhead Intelligent Transportation System (ITS) Gantry**:
-  - **Dynamic Overhead Digital Panels**: Real-time speed limits and lane guidance arrows (`v`, `!`, `X`) for Lane 0, Lane 1, and Lane 2.
-  - **AI 5G V2X Telemetry Antennas**: Radiates animated cyan wireless communication waves connecting the city grid with autonomous vehicles.
-  - **Optical LiDAR Pedestrian Scanner**: Overhead sensor casting a dynamic laser scanning beam down onto the crosswalk.
+### 2. 🚏 Smart Solar Bus Transit Station & Passenger Shelter
+- High-tech roadside passenger hub located along the sidewalk:
+  - **Dynamic Overhead LED Transit Display (PIS)**: Real-time animated arrival ticker alternating bus routes (`BUS 101: 2m`, `EXP 502: 5m`, `V2X OPTIMAL`).
+  - **Cantilever Solar Glass Canopy**: Dark aerodynamic shelter frame with integrated photovoltaic solar roof cells and neon cyan rim trim.
+  - **Tempered Frosted Windscreen & Hardwood Bench**: Resting passenger bench nestled safely under the shelter.
+  - **Interactive 5G Route Totem**: Digital route column with glowing touch screen and blinking antenna beacon.
+  - **Night Illumination**: Warm ceiling LED strip with downward ambient light cone casting over the sidewalk pavement.
 
-### 3. 🚶 Smart Photoluminescent LED Crosswalk
-- Ground-embedded smart lighting strips along the crosswalk pavement:
-  - When pedestrians cross: Pavement stripes illuminate in vibrant **Neon Cyan (`#00E5FF`)**, and a **Glowing Neon Red Light Barrier** illuminates across the asphalt stop line!
-  - When vehicles flow: Strips display soft ambient white/amber pavement markers.
+### 3. 🚶 Sidewalk Pedestrian Kinematics (Natural X-Axis Walk)
+- Citizens walk naturally along the sidewalk along the horizontal X-axis:
+  - **Bi-directional Flow**: Two separate parallel walking paths (walking right at `Y = 508`, walking left at `Y = 497`) ensure pedestrians in opposite directions never collide.
+  - **Harmonic Kinematic Oscillations**: Real-time arm and leg swing physics governed by sinusoidal functions ($\theta = A \sin(\omega t)$).
+  - **Zero-Overlap Spacing Protection**: Pedestrians dynamically adjust walking speeds to maintain safe spacing buffer.
+  - **Dynamic Rain Umbrellas**: In rainy mode, pedestrians hold color-coded protective umbrellas.
 
 ### 4. 🚁 Autonomous Aerial Delivery Drone
 - Futuristic quadcopter drone flying between skyscrapers at altitude $Y \approx 205$.
@@ -83,7 +87,7 @@ Taking inspiration from modern eco-metropolises and sustainable smart cities, th
 | **`T`** | Toggle **Bullet Train Express Boost** (speed lines & launch) |
 | **`E`** | Dispatch **Smart Ambulance** (5G V2X green priority wave) |
 | **`F`** | Dispatch **Fire Rescue Truck** (ladder engine & emergency clearance) |
-| **`SPACE`** | **Manual Gantry Override** (instantly toggle Autonomous Flow vs Pedestrian Crossing) |
+| **`SPACE`** | **City Audio Chime / Feedback** (acoustic signal feedback chirp) |
 | **`1`** | Set **Low Traffic** (1 vehicle per lane, 3 total) |
 | **`2`** | Set **Optimal Traffic** (2 vehicles per lane, 6 total) |
 | **`3`** | Set **Rush Hour Traffic** (3 vehicles per lane, 9 total) |
